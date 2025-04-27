@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.tunnel</groupId>
         <artifactId>tunnel</artifactId>
-        <version>1.0-SNAPSHOT</version>
+        <version>${reversion}</version>
     </parent>
 
     <artifactId>tunnel-spring-boot-starter</artifactId>
@@ -20,7 +20,7 @@
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter</artifactId>
+            <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
         <dependency>
@@ -39,4 +39,17 @@
             <artifactId>tunnel-core</artifactId>
         </dependency>
     </dependencies>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>${spring-boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
 </project>

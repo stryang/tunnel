@@ -1,7 +1,6 @@
 package com.tunnel;
 
 import com.tunnel.client.proxy.TunnelClientProxyInstanceHolder;
-import com.tunnel.model.req.CheckReq;
 
 
 /**

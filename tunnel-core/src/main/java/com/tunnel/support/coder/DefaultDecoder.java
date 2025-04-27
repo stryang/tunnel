@@ -26,12 +26,24 @@ public class DefaultDecoder implements Decoder {
     public <T> T decode(String decodeStr, Type type) {
         try {
             ParameterizedTypeImpl parameterizedType = getParameterizedType(type);
-            RespData<T> respData = JSON.parseObject(decodeStr, parameterizedType);
-            return respData.getData();
+            return parse(decodeStr, parameterizedType);
         } catch (Exception e) {
             log.error("decode error", e);
             throw new DecodeException(e.getMessage());
         }
+    }
+
+    protected <T> T parse(String decodeStr, ParameterizedTypeImpl parameterizedType) {
+        if (isWarp()) {
+            RespData<T> respData = JSON.parseObject(decodeStr, parameterizedType);
+            return respData.getData();
+        } else {
+            return JSON.parseObject(decodeStr, parameterizedType);
+        }
+    }
+
+    protected boolean isWarp() {
+        return true;
     }
 
     private ParameterizedTypeImpl getParameterizedType(Type type) {
@@ -44,7 +56,9 @@ public class DefaultDecoder implements Decoder {
             if (Objects.nonNull(parameterizedType)) {
                 return parameterizedType;
             }
-            parameterizedType = ParameterizedTypeImpl.make(RespData.class, new Type[]{type}, null);
+            if (isWarp()) {
+                parameterizedType = ParameterizedTypeImpl.make(RespData.class, new Type[]{type}, null);
+            }
             TYPE_PARAMETERIZED_CACHE.put(type, parameterizedType);
         }
         return parameterizedType;
