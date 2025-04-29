@@ -1,20 +1,18 @@
 package com.tunnel;
 
 import com.tunnel.client.annotations.TunnelClient;
-import com.tunnel.client.proxy.TunnelClientProxyInstanceHolder;
+import com.tunnel.client.proxy.TunnelClientInvokeHandler;
 import com.tunnel.configuration.TunnelClientProperties;
+import com.tunnel.utils.ClassUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeansException;
-import org.springframework.beans.factory.BeanFactory;
-import org.springframework.beans.factory.BeanFactoryAware;
+import org.springframework.beans.factory.config.BeanFactoryPostProcessor;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
-import org.springframework.beans.factory.support.BeanDefinitionRegistry;
-import org.springframework.beans.factory.support.BeanDefinitionRegistryPostProcessor;
-import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.util.Assert;
 
-import java.util.Map;
+import java.lang.reflect.Proxy;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -23,38 +21,29 @@ import java.util.Objects;
  */
 @Slf4j
 @RequiredArgsConstructor
-public class TunnelClientRegistry implements BeanDefinitionRegistryPostProcessor, BeanFactoryAware {
+public class TunnelClientRegistry implements BeanFactoryPostProcessor {
 
-    private DefaultListableBeanFactory beanFactory;
     private final TunnelClientProperties tunnelClientProperties;
 
     @Override
-    public void postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry) throws BeansException {
-        // 初始化代理客户端
-        TunnelClientProxyInstanceHolder.initClientProxyInstance(tunnelClientProperties.getScanPackage());
-        // 获取所有客户端
-        Map<Class<?>, Object> allTunnelClients = TunnelClientProxyInstanceHolder.getAll();
-        allTunnelClients.forEach((k, v) -> {
-            TunnelClient tunnelClient = k.getAnnotation(TunnelClient.class);
+    public void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory) throws BeansException {
+        List<Class<?>> clientClasses = ClassUtils.findAnnotated(tunnelClientProperties.getScanPackage(), TunnelClient.class);
+
+        for (Class<?> clazz : clientClasses) {
+            TunnelClient tunnelClient = clazz.getAnnotation(TunnelClient.class);
             Objects.requireNonNull(tunnelClient);
+
             String beanName = tunnelClient.name();
             Assert.hasText(beanName, "tunnel client name can not be empty!");
+
             if (!beanFactory.containsBeanDefinition(beanName)) {
-                beanFactory.registerSingleton(beanName, v);
+                Object instance = Proxy.newProxyInstance(clazz.getClassLoader(), new Class[]{clazz}, new TunnelClientInvokeHandler<>(clazz));
+                beanFactory.registerSingleton(beanName, instance);
                 log.info("register bean {}.", beanName);
             } else {
                 log.warn("bean {} already exists.", beanName);
             }
-        });
+        }
     }
 
-    @Override
-    public void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory) throws BeansException {
-        // do nothing.
-    }
-
-    @Override
-    public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
-        this.beanFactory = (DefaultListableBeanFactory) beanFactory;
-    }
 }

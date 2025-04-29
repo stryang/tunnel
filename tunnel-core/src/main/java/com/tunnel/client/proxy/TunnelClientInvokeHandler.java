@@ -31,6 +31,7 @@ public class TunnelClientInvokeHandler<T> implements InvocationHandler {
 
     private final TunnelClient tunnelClient;
     private OkHttpClient client;
+    private static final String ENCODING = "UTF-8";
 
     public TunnelClientInvokeHandler(Class<T> clazz) {
         Objects.requireNonNull(clazz);
@@ -95,7 +96,7 @@ public class TunnelClientInvokeHandler<T> implements InvocationHandler {
         throw new MethodNotSupportedException("The method " + method.getName() + " is not supported");
     }
 
-    <T> Object execute(String path, T params, Type type, BiFunction<String, RequestBody, Request> builder) {
+    private <S> Object execute(String path, S params, Type type, BiFunction<String, RequestBody, Request> builder) {
         try {
             // 请求参数编码处理
             Class<? extends Encoder> encoderClazz = tunnelClient.encoder();
@@ -109,16 +110,15 @@ public class TunnelClientInvokeHandler<T> implements InvocationHandler {
             Response response = client.newCall(request).execute();
             long endTime = System.currentTimeMillis();
             byte[] bytes = Objects.nonNull(response.body()) ? response.body().bytes() : new byte[0];
-            String decodeStr = new String(bytes, "UTF-8");
+            String decodeStr = new String(bytes, ENCODING);
             log.info("http request url={} time={}ms response={}", url, endTime - startTime, decodeStr);
 
-            // 解析响应
             if (!response.isSuccessful()) {
                 throw new RuntimeException("url " + url + " is not successful code is " + response.code());
             }
             ResponseBody body = response.body();
             if (Objects.isNull(body)) {
-                log.warn("TunnelClientInvokeHandler invoke body is null");
+                log.warn("TunnelClientInvokeHandler invoke response body is null.");
                 return null;
             }
             body.close();
